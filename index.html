@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asistencia Claustro</title>
+  <!-- Librería para generar el QR dinámico -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f4f7f6; }
+    .card { background: white; max-width: 400px; margin: 0 auto; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    #qrcode { margin: 20px auto; display: flex; justify-content: center; }
+    form { display: flex; flex-direction: column; gap: 12px; }
+    input, select, button { padding: 10px; font-size: 16px; border-radius: 6px; border: 1px solid #ccc; }
+    button { background-color: #007bff; color: white; border: none; font-weight: bold; cursor: pointer; }
+    button:hover { background-color: #0056b3; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h2>Control de Asistencia - Claustro</h2>
+
+  <!-- VISTA 1: PROYECTAR EN WEBEX (Muestra el QR) -->
+  <div id="vista-qr">
+    <p>Escanea este código QR con la cámara de tu móvil para registrar tu asistencia:</p>
+    <div id="qrcode"></div>
+  </div>
+
+  <!-- VISTA 2: FORMULARIO DEL PROFESOR (En el móvil) -->
+  <div id="vista-formulario" class="hidden">
+    <form id="form-asistencia">
+      <input type="text" id="nombre" placeholder="Nombre completo" required>
+      <input type="email" id="email" placeholder="Correo corporativo" required>
+      <select id="departamento" required>
+        <option value="">Selecciona Departamento / Etapa</option>
+        <option value="Infantil">Infantil</option>
+        <option value="Primaria">Primaria</option>
+        <option value="Secundaria">Secundaria</option>
+        <option value="Bachillerato/FP">Bachillerato / FP</option>
+        <option value="Otro">Otro</option>
+      </select>
+      <button type="submit" id="btn-enviar">Registrar Asistencia</button>
+    </form>
+    <p id="mensaje-estado"></p>
+  </div>
+</div>
+
+<script>
+  // ⚠️ PEGA AQUÍ LA URL QUE COPIASTE DE GOOGLE APPS SCRIPT
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzl3JFYfou0YD6tAaU-emmnpPQ6t5RpU0oCPKET83vXrl-bNahdGlPesW4r73hZHyuu/exec";
+
+  const params = new URLSearchParams(window.location.search);
+  const esFormulario = params.get('mode') === 'form';
+
+  if (esFormulario) {
+    // Si entran mediante el QR, se muestra el formulario
+    document.getElementById('vista-qr').classList.add('hidden');
+    document.getElementById('vista-formulario').classList.remove('hidden');
+  } else {
+    // Si entran directamente, genera el QR apuntando a la versión formulario
+    const urlFormulario = window.location.href.split('?')[0] + '?mode=form';
+    new QRCode(document.getElementById("qrcode"), {
+      text: urlFormulario,
+      width: 220,
+      height: 220
+    });
+  }
+
+  // Envío de datos a Google Sheets
+  document.getElementById('form-asistencia')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-enviar');
+    const msg = document.getElementById('mensaje-estado');
+    
+    btn.disabled = true;
+    msg.innerText = "Enviando asistencia...";
+
+    const payload = {
+      nombre: document.getElementById('nombre').value,
+      email: document.getElementById('email').value,
+      departamento: document.getElementById('departamento').value
+    };
+
+    fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(() => {
+      msg.innerText = "✅ ¡Asistencia registrada con éxito!";
+      document.getElementById('form-asistencia').reset();
+    }).catch(err => {
+      msg.innerText = "❌ Hubo un error al registrar. Inténtalo de nuevo.";
+      btn.disabled = false;
+    });
+  });
+</script>
+
+</body>
+</html>
